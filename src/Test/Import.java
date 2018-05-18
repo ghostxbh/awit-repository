@@ -14,19 +14,18 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Row;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import cn.ssm.entity.AbstractDetail;
-import cn.ssm.entity.ComparisonAbstract;
-import cn.ssm.entity.ComparisonAccount;
-import cn.ssm.utils.CellType;
-import cn.ssm.utils.GetKemuList;
-import cn.ssm.utils.JdbcUtil;
+import cn.comparison.entity.ComparisonAbstract;
+import cn.comparison.entity.ComparisonAbstractDetail;
+import cn.comparison.entity.ComparisonAccount;
+import cn.comparison.utils.CellType;
+import cn.comparison.utils.GetKemuList;
+import cn.comparison.utils.JdbcUtil;
 
 public class Import {
 
 	public static Connection conn = null;
 	public static PreparedStatement ps = null;
 	public static ResultSet rs = null;
-
 
 	public static void main(String[] agrs) throws IOException {
 
@@ -59,8 +58,7 @@ public class Import {
 				String two = CellType.getCellValue(row.getCell(4));
 				// 三级科目
 				String three = CellType.getCellValue(row.getCell(5));
-				
-				
+
 				ComparisonAccount cc = new ComparisonAccount();
 
 				ComparisonAbstract ca = new ComparisonAbstract();
@@ -69,40 +67,61 @@ public class Import {
 				// 凭证
 				ca.setVoucherCode(voucherCode);
 				String fullName = null;
-				if (two != null && !two.equals("")) {
-					fullName = one + o + two;
-				} else if (three != null && !three.equals("")) {
+				if (three != null && !three.equals("")) {
 					fullName = one + o + two + o + three;
+				} else if (two != null && !two.equals("")) {
+					fullName = one + o + two;
 				} else {
 					fullName = one;
 				}
-					
+
 				String code = GetKemuList.getbName(fullName);
 				if (code == null & fullName.contains("/")) {
 					String[] split = fullName.split("/");
 					ComparisonAccount cac = GetKemuList.getFirstAccount(split[0]);
 					if (split.length < 3) {
-						int maxCode = GetKemuList.getMaxCode(cac.getId());
-						cc.setAccountCode(String.valueOf(maxCode + 1));
-						cc.setAccountName(split[1]);
-						cc.setFullName(fullName);
-						cc.setAccountType(cac.getAccountType());
-						cc.setAccountDirect(cac.getAccountDirect());
-						cc.setAccountParentId(cac.getId());
-						int insert = insert(cc);
-						if (insert > 0) {
-							System.out.println("添加二级（最大）成功");
-							System.out.println(cc.toString());
+						String maxCode = GetKemuList.getMaxCode(cac.getId(),fullName);
+						if (Integer.parseInt(maxCode) == 0) {
+							cc.setAccountCode(cac.getAccountCode() + "0001");
+							cc.setAccountName(split[1]);
+							cc.setFullName(fullName);
+							cc.setAccountType(cac.getAccountType());
+							cc.setAccountDirect(cac.getAccountDirect());
+							cc.setAccountParentId(cac.getId());
+							int insert = insert(cc);
+							if (insert > 0) {
+								System.out.println("添加二级（最大）成功");
+								System.out.println(cc.toString());
+							} else {
+								System.out.println("添加失败");
+							}
 						} else {
-							System.out.println("添加失败");
+							cc.setAccountCode(String.valueOf(maxCode + 1));
+							cc.setAccountName(split[1]);
+							cc.setFullName(fullName);
+							cc.setAccountType(cac.getAccountType());
+							cc.setAccountDirect(cac.getAccountDirect());
+							cc.setAccountParentId(cac.getId());
+							int insert = insert(cc);
+							if (insert > 0) {
+								System.out.println("添加二级（最大）成功");
+								System.out.println(cc.toString());
+							} else {
+								System.out.println("添加失败");
+							}
 						}
 					} else {
+						// 取3级的全路径下的除最后一级的其他2级名称
 						String substring = fullName.substring(0, fullName.lastIndexOf("/"));
 						String getfName = GetKemuList.getbName(substring);
-						int maxCode = GetKemuList.getMaxCode(GetKemuList.getId(GetKemuList.getfName(split[0])));
-						int second = maxCode + 1;
+
+						String maxCode = GetKemuList.getMaxCode(cac.getId(),substring);
+
+						if (Integer.parseInt(maxCode) == 0) {							
+							maxCode = split[0].concat("0001");
+						}						
 						if (getfName == null) {
-							cc.setAccountCode(String.valueOf(second));
+							cc.setAccountCode(String.valueOf(maxCode));
 							cc.setAccountName(split[split.length - 1]);
 							cc.setFullName(substring);
 							cc.setAccountType(cac.getAccountType());
@@ -116,23 +135,24 @@ public class Import {
 								System.out.println("添加失败");
 							}
 
-						}
-						cc.setAccountCode(String.valueOf(second) + "0001");
-						cc.setAccountName(split[split.length]);
-						cc.setFullName(fullName);
-						cc.setAccountType(cac.getAccountType());
-						cc.setAccountDirect(cac.getAccountDirect());
-						cc.setAccountParentId(GetKemuList.getParentId(substring));
-						int insert = insert(cc);
-						if (insert > 0) {
-							System.out.println("添加三级科目成功");
-							System.out.println(cc.toString());
 						} else {
-							System.out.println("添加失败");
+							cc.setAccountCode(String.valueOf(maxCode)+"0001");							
+							cc.setAccountName(split[split.length-1]);
+							cc.setFullName(fullName);
+							cc.setAccountType(cac.getAccountType());
+							cc.setAccountDirect(cac.getAccountDirect());
+							cc.setAccountParentId(GetKemuList.getParentId(substring));
+							int insert = insert(cc);
+							if (insert > 0) {
+								System.out.println("添加三级科目成功");
+								System.out.println(cc.toString());
+							} else {
+								System.out.println("添加失败");
+							}
 						}
 
 					}
-
+					
 				}
 				code = GetKemuList.getbName(fullName);
 
@@ -170,7 +190,7 @@ public class Import {
 		 * 添加凭证表数据
 		 */
 		Integer maxvCode = GetKemuList.getVoucherCode();
-		AbstractDetail ad = new AbstractDetail();
+		ComparisonAbstractDetail ad = new ComparisonAbstractDetail();
 		for (int k = 1; k <= maxvCode; k++) {
 			ad.setCompanyName("北京云账房信息有限公司");// 设置公司名称
 			ad.setPriority("1");
@@ -226,11 +246,11 @@ public class Import {
 	 * @return
 	 * @throws IOException
 	 */
-	public static int insertDetail(AbstractDetail ad) throws IOException {
+	public static int insertDetail(ComparisonAbstractDetail ad) throws IOException {
 
 		int i = 0;
-		String sql = "insert into abstract_detail(voucher_code,company_name,priority)values('" + ad.getVoucherCode()
-				+ "','" + ad.getCompanyName() + "','" + ad.getPriority() + "')";
+		String sql = "insert into comparison_abstract_detail(voucher_code,company_name,priority)values('"
+				+ ad.getVoucherCode() + "','" + ad.getCompanyName() + "','" + ad.getPriority() + "')";
 		try {
 			ps = JdbcUtil.getConn().prepareStatement(sql);
 			i = ps.executeUpdate();

@@ -4,21 +4,48 @@
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="cn.smm.dao.ComparisonAbstractDao">
 	<!-- 目的：为dao接口方法提供sql语句配置 -->
-	
-	
+
+
 	<!-- 添加用户 -->
-	<insert id="addUser" resultType="int" parameterType="ComparisonAbstract">
-		insert into
+	<insert id="addAbstract" resultType="int" parameterType="ComparisonAbstract">
+		insert
+		into
 		comparison_abstract(
 		voucher_abstract,
+		voucher_code,
 		debit_account,
 		credit_account)
 		values(
+		voucher_code=#{voucherCode},
 		voucher_abstract=#{voucherAbstract},
 		debit_account=#{debitAccount},
 		credit_account=#{creditAccount})
 	</insert>
-	
+
+	<delete id="delAbstract" resultType="int" parameterType="ComparisonAbstract">
+		DELETE
+		FROM
+		comparison_abstract
+		WHERE
+		voucher_code=#{voucherCode}
+	</delete>
+
+	<update id="updateAbstract" resultType="int" parameterType="ComparisonAbstract">
+		UPDATE
+		comparison_abstract
+		set(
+		voucher_code=#{voucherCode},
+		voucher_abstract=#{voucherAbstract},
+		debit_account=#{debitAccount},
+		credit_account=#{creditAccount})
+	</update>
+
+	<select id="queryAbstractByCode" resultType="List<ComparisonAbstract>"
+		parameterType="String">
+		SELECT * FROM comparison_abstract WHERE
+		voucher_code=#{voucherCode}
+	</select>
+
 	<!-- 登陆验证 -->
 	<select id="login" parameterType="map" resultType="User">
 		SELECT
@@ -57,24 +84,6 @@
 		WHERE
 		name=#{name}
 	</select>
-	
-	<delete id="delById" resultType="int" parameterType="int">
-		DELETE FROM
-		user
-		WHERE
-		id=#{id}
-	</delete
-    
-	<update id="updateById" parameterType="int">
-		UPDATE
-		user
-		SET
-		name=#{name},
-		phone=#{phone},
-		code=#{code},
-		password=#{password},
-		remark=#{remark}
-		WHERE
-		id=#{id}
-	</update>
+
+
 </mapper>

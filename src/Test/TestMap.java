@@ -6,7 +6,7 @@ import java.sql.ResultSet;
 
 import java.util.List;
 
-import cn.ssm.utils.GetKemuList;
+import cn.comparison.utils.GetKemuList;
 
 public class TestMap {
 	public static Connection conn = null;
